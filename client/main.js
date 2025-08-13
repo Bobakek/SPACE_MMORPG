@@ -5,12 +5,35 @@ socket.on('connect', () => { playerId = socket.id; });
 const hud = document.getElementById('hud');
 const hudText = document.getElementById('hudText');
 const healthFill = document.getElementById('healthFill');
+const menu = document.getElementById('menu');
+const menuToggle = document.getElementById('menuToggle');
+const shipInfo = document.getElementById('ship-info');
+const galacticMap = document.getElementById('galactic-map');
+const market = document.getElementById('market');
+const targets = document.getElementById('targets');
+
+const mapCanvas = document.createElement('canvas');
+mapCanvas.width = 200;
+mapCanvas.height = 200;
+galacticMap.appendChild(mapCanvas);
+const mapCtx = mapCanvas.getContext('2d');
 
 let health = 100;
 function updateHealth(){
   healthFill.style.width = health + '%';
 }
 updateHealth();
+
+function toggleMenu(){
+  menu.classList.toggle('hidden');
+  if(!menu.classList.contains('hidden')){
+    document.exitPointerLock();
+    loadMarket();
+  }else{
+    renderer.domElement.requestPointerLock();
+  }
+}
+menuToggle.addEventListener('click', toggleMenu);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
@@ -100,6 +123,9 @@ document.addEventListener('keydown', (e) => {
     health = Math.max(0, health - 10);
     updateHealth();
   }
+  if(e.key.toLowerCase() === 'm'){
+    toggleMenu();
+  }
 });
 document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
@@ -120,6 +146,67 @@ window.addEventListener('resize', () => {
   hud.style.width = window.innerWidth + 'px';
   hud.style.height = window.innerHeight + 'px';
 });
+
+const MAP_SCALE = 0.5;
+
+function updateShipInfo(){
+  shipInfo.innerHTML = `Health: ${health.toFixed(0)}<br>` +
+    `Position: (${ship.position.x.toFixed(1)}, ${ship.position.y.toFixed(1)}, ${ship.position.z.toFixed(1)})<br>` +
+    `Rotation: (${ship.rotation.x.toFixed(2)}, ${ship.rotation.y.toFixed(2)}, ${ship.rotation.z.toFixed(2)})`;
+}
+
+function drawGalacticMap(){
+  mapCtx.fillStyle = 'rgba(0,0,0,0.9)';
+  mapCtx.fillRect(0,0,mapCanvas.width,mapCanvas.height);
+  mapCtx.fillStyle = '#fff';
+  for(let i=0;i<starVertices.length;i+=3){
+    const x = mapCanvas.width/2 + starVertices[i]*MAP_SCALE;
+    const z = mapCanvas.height/2 + starVertices[i+2]*MAP_SCALE;
+    mapCtx.fillRect(x,z,1,1);
+  }
+  mapCtx.fillStyle = '#0f0';
+  mapCtx.fillRect(mapCanvas.width/2 + ship.position.x*MAP_SCALE -1, mapCanvas.height/2 + ship.position.z*MAP_SCALE -1,2,2);
+  mapCtx.fillStyle = '#f00';
+  Object.values(otherShips).forEach(o => {
+    mapCtx.fillRect(mapCanvas.width/2 + o.position.x*MAP_SCALE -1, mapCanvas.height/2 + o.position.z*MAP_SCALE -1,2,2);
+  });
+}
+
+async function loadMarket(){
+  const token = localStorage.getItem('token');
+  if(!token){
+    market.textContent = 'Login to view market';
+    return;
+  }
+  try{
+    const res = await fetch(`/inventory/get?playerId=${encodeURIComponent(playerId)}`,{
+      headers:{'Authorization':`Bearer ${token}`}
+    });
+    if(res.ok){
+      const data = await res.json();
+      market.innerHTML = data.inventory.map(item => `${item.itemId}: ${item.quantity}`).join('<br>');
+    }else{
+      market.textContent = 'Failed to load market';
+    }
+  }catch(err){
+    market.textContent = 'Error loading market';
+  }
+}
+
+function updateTargets(){
+  const list = Object.entries(otherShips).map(([id, mesh]) => {
+    const dx = mesh.position.x - ship.position.x;
+    const dy = mesh.position.y - ship.position.y;
+    const dz = mesh.position.z - ship.position.z;
+    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    return {id, dist};
+  }).sort((a,b) => a.dist - b.dist).slice(0,5);
+  if(list.length === 0){
+    targets.textContent = 'No targets';
+  } else {
+    targets.innerHTML = list.map(t => `${t.id}: ${t.dist.toFixed(1)}`).join('<br>');
+  }
+}
 
 function animate(){
   requestAnimationFrame(animate);
@@ -143,6 +230,11 @@ function animate(){
   camera.lookAt(ship.position);
 
   hudText.textContent = `x: ${ship.position.x.toFixed(1)} y: ${ship.position.y.toFixed(1)} z: ${ship.position.z.toFixed(1)} | speed: ${speed.toFixed(1)}`;
+  if(!menu.classList.contains('hidden')){
+    updateShipInfo();
+    drawGalacticMap();
+    updateTargets();
+  }
   renderer.render(scene, camera);
 }
 animate();
