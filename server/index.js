@@ -17,18 +17,53 @@ io.use(verifySocketToken);
 
 const players = {};
 
+const MAX_SPEED = 15; // units per second
+const WORLD_BOUND = 1000;
+
+const withinBounds = ({ x, y, z }) =>
+  Math.abs(x) <= WORLD_BOUND &&
+  Math.abs(y) <= WORLD_BOUND &&
+  Math.abs(z) <= WORLD_BOUND;
+
+const publicState = ({ position, rotation }) => ({ position, rotation });
+
+const getPublicPlayers = () => {
+  const result = {};
+  for (const [id, state] of Object.entries(players)) {
+    result[id] = publicState(state);
+  }
+  return result;
+};
+
 io.on('connection', (socket) => {
   players[socket.id] = {
     position: { x: 0, y: 0, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: 0, y: 0, z: 0 },
+    lastUpdate: Date.now()
   };
 
-  socket.emit('players', players);
-  socket.broadcast.emit('playerJoined', { id: socket.id, state: players[socket.id] });
+  socket.emit('players', getPublicPlayers());
+  socket.broadcast.emit('playerJoined', { id: socket.id, state: publicState(players[socket.id]) });
 
   socket.on('state', (state) => {
-    players[socket.id] = state;
-    socket.broadcast.emit('playerState', { id: socket.id, state });
+    const player = players[socket.id];
+    if (!player) return;
+    const now = Date.now();
+    const dt = (now - player.lastUpdate) / 1000;
+    const { position, rotation } = state;
+
+    if (!position || !rotation || dt <= 0) return;
+
+    const dx = position.x - player.position.x;
+    const dy = position.y - player.position.y;
+    const dz = position.z - player.position.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const speed = dist / dt;
+
+    if (speed > MAX_SPEED || !withinBounds(position)) return;
+
+    players[socket.id] = { position, rotation, lastUpdate: now };
+    socket.broadcast.emit('playerState', { id: socket.id, state: { position, rotation } });
   });
 
   socket.on('disconnect', () => {
