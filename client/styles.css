@@ -1,0 +1,100 @@
+body { margin:0; overflow:hidden; }
+#hud {
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  color:#fff;
+  font-family:sans-serif;
+  z-index:10;
+}
+#hudText {
+  position:absolute;
+  top:10px;
+  left:10px;
+}
+.crosshair {
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:20px;
+  height:20px;
+  margin-left:-10px;
+  margin-top:-10px;
+  pointer-events:none;
+}
+.crosshair:before,
+.crosshair:after {
+  content:'';
+  position:absolute;
+  background:#fff;
+}
+.crosshair:before {
+  left:50%;
+  top:0;
+  transform:translateX(-50%);
+  width:2px;
+  height:20px;
+}
+.crosshair:after {
+  top:50%;
+  left:0;
+  transform:translateY(-50%);
+  width:20px;
+  height:2px;
+}
+#healthBar {
+  position:absolute;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  width:200px;
+  height:20px;
+  border:1px solid #fff;
+  background:rgba(255,255,255,0.1);
+}
+#healthFill {
+  height:100%;
+  width:100%;
+  background:#0f0;
+}
+#menuToggle {
+  position:absolute;
+  top:10px;
+  right:10px;
+  pointer-events:auto;
+}
+#menu {
+  position:absolute;
+  top:50px;
+  right:10px;
+  width:300px;
+  max-height:400px;
+  overflow:auto;
+  background:rgba(0,0,0,0.8);
+  border:1px solid #fff;
+  padding:10px;
+  pointer-events:auto;
+}
+.hidden { display:none; }
+#menu > div { margin-bottom:10px; }
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  #menu {
+    width:90%;
+    right:5%;
+    max-height:60%;
+  }
+  #healthBar {
+    width:150px;
+    height:15px;
+  }
+  .crosshair {
+    width:15px;
+    height:15px;
+    margin-left:-7.5px;
+    margin-top:-7.5px;
+  }
+}
