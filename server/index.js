@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const { register, login, authenticateToken, verifySocketToken } = require('./auth');
+const { MongoClient } = require('mongodb');
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -40,57 +40,81 @@ io.on('connection', (socket) => {
 app.post('/auth/register', register);
 app.post('/auth/login', login);
 
-const inventoryFile = path.join(__dirname, 'inventory.json');
+const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
+const client = new MongoClient(uri);
+let inventoryCollection;
 
-const readInventory = () => {
+async function initDb() {
   try {
-    return JSON.parse(fs.readFileSync(inventoryFile, 'utf8'));
-  } catch {
-    return [];
+    await client.connect();
+    const db = client.db('space_mmorpg');
+    inventoryCollection = db.collection('inventory');
+  } catch (err) {
+    console.error('Database connection failed', err);
   }
+}
+initDb();
+
+const readInventory = async (playerId) => {
+  return inventoryCollection.find({ playerId }).toArray();
 };
 
-const writeInventory = (data) => {
-  fs.writeFileSync(inventoryFile, JSON.stringify(data, null, 2));
-};
-
-app.get('/inventory/get', authenticateToken, (req, res) => {
-  const { playerId } = req.query;
-  if (!playerId) {
-    return res.status(400).json({ error: 'playerId required' });
-  }
-  const inventory = readInventory().filter((item) => item.playerId === playerId);
-  res.json({ inventory });
-});
-
-app.post('/inventory/update', authenticateToken, (req, res) => {
-  const { playerId, itemId, quantityChange } = req.body;
-  if (!playerId || !itemId || typeof quantityChange !== 'number') {
-    return res.status(400).json({ error: 'playerId, itemId and quantityChange required' });
-  }
-
-  const data = readInventory();
-  let entry = data.find(
-    (i) => i.playerId === playerId && i.itemId === itemId
-  );
-
+const writeInventory = async (playerId, itemId, quantityChange) => {
+  const entry = await inventoryCollection.findOne({ playerId, itemId });
   if (!entry) {
     if (quantityChange < 0) {
-      return res.status(400).json({ error: 'Quantity cannot be negative' });
+      throw new Error('Quantity cannot be negative');
     }
-    entry = { playerId, itemId, quantity: quantityChange };
-    data.push(entry);
+    await inventoryCollection.insertOne({ playerId, itemId, quantity: quantityChange });
   } else {
     const newQuantity = entry.quantity + quantityChange;
     if (newQuantity < 0) {
-      return res.status(400).json({ error: 'Quantity cannot be negative' });
+      throw new Error('Quantity cannot be negative');
     }
-    entry.quantity = newQuantity;
+    await inventoryCollection.updateOne(
+      { playerId, itemId },
+      { $set: { quantity: newQuantity } }
+    );
+  }
+  return readInventory(playerId);
+};
+
+app.get('/inventory/get', authenticateToken, async (req, res) => {
+  const { playerId } = req.query;
+  if (typeof playerId !== 'string' || !playerId.trim()) {
+    return res.status(400).json({ error: 'playerId required' });
+  }
+  try {
+    const inventory = await readInventory(playerId);
+    res.json({ inventory });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch inventory' });
+  }
+});
+
+app.post('/inventory/update', authenticateToken, async (req, res) => {
+  const { playerId, itemId, quantityChange } = req.body;
+  if (
+    typeof playerId !== 'string' ||
+    typeof itemId !== 'string' ||
+    typeof quantityChange !== 'number'
+  ) {
+    return res.status(400).json({
+      error: 'playerId and itemId must be strings and quantityChange must be a number'
+    });
   }
 
-  writeInventory(data);
-  const inventory = data.filter((i) => i.playerId === playerId);
-  res.json({ success: true, inventory });
+  try {
+    const inventory = await writeInventory(playerId, itemId, quantityChange);
+    res.json({ success: true, inventory });
+  } catch (err) {
+    if (err.message === 'Quantity cannot be negative') {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update inventory' });
+  }
 });
 
 app.post('/ship/update', authenticateToken, (req, res) => {
