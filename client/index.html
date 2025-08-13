@@ -6,8 +6,13 @@
   <style>body { margin:0; overflow:hidden; }</style>
 </head>
 <body>
+<script src="/socket.io/socket.io.js"></script>
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 <script>
+const socket = io();
+let playerId;
+socket.on('connect', () => { playerId = socket.id; });
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
@@ -31,12 +36,77 @@ const material = new THREE.MeshStandardMaterial({color:0x2194ce});
 const ship = new THREE.Mesh(geometry, material);
 scene.add(ship);
 
+const otherShips = {};
+function addOtherShip(id, state){
+  const mesh = new THREE.Mesh(geometry.clone(), new THREE.MeshStandardMaterial({color:0xff0000}));
+  scene.add(mesh);
+  otherShips[id] = mesh;
+  if(state){
+    mesh.position.set(state.position.x, state.position.y, state.position.z);
+    mesh.rotation.set(state.rotation.x, state.rotation.y, state.rotation.z);
+  }
+}
+
+socket.on('players', (players) => {
+  Object.keys(players).forEach(id => {
+    if(id === playerId) return;
+    addOtherShip(id, players[id]);
+  });
+});
+socket.on('playerJoined', ({id, state}) => {
+  if(id !== playerId) addOtherShip(id, state);
+});
+socket.on('playerState', ({id, state}) => {
+  if(id === playerId) return;
+  if(!otherShips[id]) addOtherShip(id, state);
+  const mesh = otherShips[id];
+  mesh.position.set(state.position.x, state.position.y, state.position.z);
+  mesh.rotation.set(state.rotation.x, state.rotation.y, state.rotation.z);
+});
+socket.on('playerLeft', (id) => {
+  const mesh = otherShips[id];
+  if(mesh){
+    scene.remove(mesh);
+    delete otherShips[id];
+  }
+});
+
+const keys = {};
+document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+let yaw = 0;
+let pitch = 0;
+document.addEventListener('mousemove', (e) => {
+  yaw -= e.movementX * 0.002;
+  pitch -= e.movementY * 0.002;
+});
+renderer.domElement.addEventListener('click', () => {
+  renderer.domElement.requestPointerLock();
+});
+
 function animate(){
   requestAnimationFrame(animate);
-  ship.rotation.y += 0.005;
+  const speed = 0.2;
+
+  if (keys['w'] || keys['arrowup']) ship.translateZ(-speed);
+  if (keys['s'] || keys['arrowdown']) ship.translateZ(speed);
+  if (keys['a'] || keys['arrowleft']) ship.translateX(-speed);
+  if (keys['d'] || keys['arrowright']) ship.translateX(speed);
+
+  ship.rotation.y = yaw;
+  ship.rotation.x = pitch;
+
   renderer.render(scene, camera);
 }
 animate();
+
+setInterval(() => {
+  socket.emit('state', {
+    position: { x: ship.position.x, y: ship.position.y, z: ship.position.z },
+    rotation: { x: ship.rotation.x, y: ship.rotation.y, z: ship.rotation.z }
+  });
+}, 100);
 </script>
 </body>
 </html>

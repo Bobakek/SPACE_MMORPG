@@ -1,10 +1,38 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
+
+const http = require('http');
+const { Server } = require('socket.io');
+
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'client')));
+
+const server = http.createServer(app);
+const io = new Server(server);
+
+const players = {};
+
+io.on('connection', (socket) => {
+  players[socket.id] = {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 }
+  };
+
+  socket.emit('players', players);
+  socket.broadcast.emit('playerJoined', { id: socket.id, state: players[socket.id] });
+
+  socket.on('state', (state) => {
+    players[socket.id] = state;
+    socket.broadcast.emit('playerState', { id: socket.id, state });
+  });
+
+  socket.on('disconnect', () => {
+    delete players[socket.id];
+    socket.broadcast.emit('playerLeft', socket.id);
+  });
+});
 
 app.post('/auth/login', (req, res) => {
   const { username = 'pilot' } = req.body;
@@ -70,6 +98,6 @@ app.post('/ship/update', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
