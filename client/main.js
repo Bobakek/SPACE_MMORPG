@@ -7,6 +7,7 @@ const hudText = document.getElementById('hudText');
 const healthFill = document.getElementById('healthFill');
 const menu = document.getElementById('menu');
 const menuToggle = document.getElementById('menuToggle');
+const crosshair = document.getElementById('crosshair');
 const shipInfo = document.getElementById('ship-info');
 const galacticMap = document.getElementById('galactic-map');
 const market = document.getElementById('market');
@@ -21,15 +22,21 @@ const mapCtx = mapCanvas.getContext('2d');
 let health = 100;
 function updateHealth(){
   healthFill.style.width = health + '%';
+  const pct = health / 100;
+  const r = Math.round(255 * (1 - pct));
+  const g = Math.round(255 * pct);
+  healthFill.style.backgroundColor = `rgb(${r}, ${g}, 0)`;
 }
 updateHealth();
 
 function toggleMenu(){
   menu.classList.toggle('hidden');
   if(!menu.classList.contains('hidden')){
+    crosshair.classList.add('hidden');
     document.exitPointerLock();
     loadMarket();
   }else{
+    crosshair.classList.remove('hidden');
     renderer.domElement.requestPointerLock();
   }
 }
