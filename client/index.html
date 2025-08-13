@@ -4,20 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Space MMORPG Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 <div id="hud">
-  <div id="hudText"></div>
-  <button id="menuToggle">Menu</button>
-  <div id="menu" class="hidden">
-    <div id="ship-info"></div>
-    <div id="galactic-map"></div>
-    <div id="market"></div>
-    <div id="targets"></div>
+  <div class="hud-top">
+    <div id="hudText" class="panel"></div>
+    <div id="menuPanel" class="panel">
+      <button id="menuToggle">Menu</button>
+      <div id="menu" class="hidden">
+        <div id="ship-info"></div>
+        <div id="galactic-map"></div>
+        <div id="market"></div>
+        <div id="targets"></div>
+      </div>
+    </div>
   </div>
   <div class="crosshair"></div>
-  <div id="healthBar"><div id="healthFill"></div></div>
+  <div class="hud-bottom">
+    <div id="healthBar" class="panel"><div id="healthFill"></div></div>
+  </div>
 </div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
