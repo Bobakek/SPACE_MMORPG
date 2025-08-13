@@ -93,7 +93,7 @@ new THREE.TextureLoader().load(
 const camera = new THREE.PerspectiveCamera(
   75, window.innerWidth / window.innerHeight, 0.1, 1000
 );
-camera.position.set(0, 5, 20);
+const cameraOffset = new THREE.Vector3(0, 3, 10);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -178,6 +178,10 @@ function animate(){
 
   ship.rotation.y = yaw;
   ship.rotation.x = pitch;
+
+  const relativeOffset = cameraOffset.clone().applyQuaternion(ship.quaternion);
+  camera.position.copy(ship.position).add(relativeOffset);
+  camera.lookAt(ship.position);
 
   hudText.textContent = `x: ${ship.position.x.toFixed(1)} y: ${ship.position.y.toFixed(1)} z: ${ship.position.z.toFixed(1)} | speed: ${speed.toFixed(1)}`;
   renderer.render(scene, camera);
