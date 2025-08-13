@@ -11,31 +11,39 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'client')));
 
-const server = http.createServer(app);
-const io = new Server(server);
-io.use(verifySocketToken);
+// Only start the Socket.IO server when running this file directly
+if (require.main === module) {
+  const server = http.createServer(app);
+  const io = new Server(server);
+  io.use(verifySocketToken);
 
-const players = {};
+  const players = {};
 
-io.on('connection', (socket) => {
-  players[socket.id] = {
-    position: { x: 0, y: 0, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
-  };
+  io.on('connection', (socket) => {
+    players[socket.id] = {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 }
+    };
 
-  socket.emit('players', players);
-  socket.broadcast.emit('playerJoined', { id: socket.id, state: players[socket.id] });
+    socket.emit('players', players);
+    socket.broadcast.emit('playerJoined', { id: socket.id, state: players[socket.id] });
 
-  socket.on('state', (state) => {
-    players[socket.id] = state;
-    socket.broadcast.emit('playerState', { id: socket.id, state });
+    socket.on('state', (state) => {
+      players[socket.id] = state;
+      socket.broadcast.emit('playerState', { id: socket.id, state });
+    });
+
+    socket.on('disconnect', () => {
+      delete players[socket.id];
+      socket.broadcast.emit('playerLeft', socket.id);
+    });
   });
 
-  socket.on('disconnect', () => {
-    delete players[socket.id];
-    socket.broadcast.emit('playerLeft', socket.id);
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
   });
-});
+}
 
 app.post('/auth/register', register);
 app.post('/auth/login', login);
@@ -97,8 +105,4 @@ app.post('/ship/update', authenticateToken, (req, res) => {
   const { playerId, position, velocity } = req.body;
   res.json({ acknowledged: true, playerId, position, velocity });
 });
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = app;
