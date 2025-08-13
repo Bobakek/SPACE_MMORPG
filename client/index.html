@@ -50,10 +50,27 @@
       width:20px;
       height:2px;
     }
+
+    #healthBar {
+      position:absolute;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      width:200px;
+      height:20px;
+      border:1px solid #fff;
+      background:rgba(255,255,255,0.1);
+    }
+
+    #healthFill {
+      height:100%;
+      width:100%;
+      background:#0f0;
+    }
   </style>
 </head>
 <body>
-<div id="hud"><div id="hudText"></div><div class="crosshair"></div></div>
+<div id="hud"><div id="hudText"></div><div class="crosshair"></div><div id="healthBar"><div id="healthFill"></div></div></div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 <script src="main.js"></script>

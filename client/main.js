@@ -4,6 +4,13 @@ socket.on('connect', () => { playerId = socket.id; });
 
 const hud = document.getElementById('hud');
 const hudText = document.getElementById('hudText');
+const healthFill = document.getElementById('healthFill');
+
+let health = 100;
+function updateHealth(){
+  healthFill.style.width = health + '%';
+}
+updateHealth();
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
@@ -87,7 +94,13 @@ socket.on('playerLeft', (id) => {
 });
 
 const keys = {};
-document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+document.addEventListener('keydown', (e) => {
+  keys[e.key.toLowerCase()] = true;
+  if(e.key === ' '){
+    health = Math.max(0, health - 10);
+    updateHealth();
+  }
+});
 document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
 let yaw = 0;
@@ -111,6 +124,11 @@ window.addEventListener('resize', () => {
 function animate(){
   requestAnimationFrame(animate);
   const speed = 0.2;
+
+  if(health < 100){
+    health = Math.min(100, health + 0.05);
+    updateHealth();
+  }
 
   if (keys['w'] || keys['arrowup']) ship.translateZ(-speed);
   if (keys['s'] || keys['arrowdown']) ship.translateZ(speed);
