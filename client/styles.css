@@ -1,4 +1,10 @@
-body { margin:0; overflow:hidden; }
+body {
+  margin:0;
+  overflow:hidden;
+  font-family:'Roboto', sans-serif;
+  background:#000;
+  color:#fff;
+}
 
 #hud {
   position:absolute;
@@ -85,5 +91,60 @@ body { margin:0; overflow:hidden; }
     width:15px;
     height:15px;
   }
+}
+
+
+.login-background {
+  background:url('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/galaxy_starfield.png') center/cover no-repeat fixed;
+}
+
+.login-container {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+.login-form {
+  background:rgba(0,0,0,0.7);
+  padding:20px;
+  border-radius:8px;
+  box-shadow:0 0 10px rgba(255,255,255,0.2);
+  width:300px;
+  text-align:center;
+}
+
+.login-form h1 {
+  margin-top:0;
+  margin-bottom:20px;
+  font-weight:500;
+}
+
+.login-form input {
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  border:none;
+  border-radius:4px;
+}
+
+.login-form button {
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:4px;
+  background:#2194ce;
+  color:#fff;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.login-form button:hover {
+  background:#1b7aa7;
+}
+
+.error-msg {
+  color:#f66;
+  min-height:1em;
 }
 
