@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { register, login, authenticateToken, verifySocketToken } = require('./auth');
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -12,6 +13,7 @@ app.use(express.static(path.join(__dirname, '..', 'client')));
 
 const server = http.createServer(app);
 const io = new Server(server);
+io.use(verifySocketToken);
 
 const players = {};
 
@@ -35,10 +37,8 @@ io.on('connection', (socket) => {
   });
 });
 
-app.post('/auth/login', (req, res) => {
-  const { username = 'pilot' } = req.body;
-  res.json({ token: 'placeholder-token', playerId: username });
-});
+app.post('/auth/register', register);
+app.post('/auth/login', login);
 
 const inventoryFile = path.join(__dirname, 'inventory.json');
 
@@ -54,7 +54,7 @@ const writeInventory = (data) => {
   fs.writeFileSync(inventoryFile, JSON.stringify(data, null, 2));
 };
 
-app.get('/inventory/get', (req, res) => {
+app.get('/inventory/get', authenticateToken, (req, res) => {
   const { playerId } = req.query;
   if (!playerId) {
     return res.status(400).json({ error: 'playerId required' });
@@ -63,7 +63,7 @@ app.get('/inventory/get', (req, res) => {
   res.json({ inventory });
 });
 
-app.post('/inventory/update', (req, res) => {
+app.post('/inventory/update', authenticateToken, (req, res) => {
   const { playerId, itemId, quantityChange } = req.body;
   if (!playerId || !itemId || typeof quantityChange !== 'number') {
     return res.status(400).json({ error: 'playerId, itemId and quantityChange required' });
@@ -93,7 +93,7 @@ app.post('/inventory/update', (req, res) => {
   res.json({ success: true, inventory });
 });
 
-app.post('/ship/update', (req, res) => {
+app.post('/ship/update', authenticateToken, (req, res) => {
   const { playerId, position, velocity } = req.body;
   res.json({ acknowledged: true, playerId, position, velocity });
 });
